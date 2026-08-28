@@ -12,7 +12,7 @@ from vulnshield.training.trainer import BaseTrainer, TrainerConfig
 from vulnshield.training.evaluator import evaluate_model
 
 
-def train_resnet18(epochs: int = 100, batch_size: int = 128, lr: float = 0.1, seed: int = 42):
+def train_resnet18(epochs: int = 200, batch_size: int = 128, lr: float = 0.1, seed: int = 42):
     repo_root = Path(__file__).resolve().parent.parent.parent
     paths_cfg = load_yaml(repo_root / "configs/project/paths.yaml")
     resolved_paths = resolve_project_paths(paths_cfg, project_root=repo_root)
@@ -73,7 +73,7 @@ def train_resnet18(epochs: int = 100, batch_size: int = 128, lr: float = 0.1, se
 
 def main():
     parser = argparse.ArgumentParser(description="Train Clean ResNet-18 on CIFAR-10")
-    parser.add_argument("--epochs", type=int, default=100, help="Total training epochs")
+    parser.add_argument("--epochs", type=int, default=200, help="Total training epochs (default: 200)")
     parser.add_argument("--batch-size", type=int, default=128, help="Batch size")
     parser.add_argument("--lr", type=float, default=0.1, help="Initial learning rate")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")

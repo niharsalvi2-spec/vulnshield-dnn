@@ -159,3 +159,8 @@ def _to_plain_dict(d: Union[Dict[str, Any], ConfigDict]) -> Dict[str, Any]:
         else:
             res[k] = v
     return res
+
+
+# Alias for backward compatibility
+load_config = load_yaml
+

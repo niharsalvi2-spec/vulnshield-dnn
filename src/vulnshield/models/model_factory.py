@@ -117,3 +117,8 @@ def load_model_weights(
 
     model.load_state_dict(state_dict, strict=strict)
     return metadata
+
+
+# Alias for backward compatibility
+build_model = create_model
+

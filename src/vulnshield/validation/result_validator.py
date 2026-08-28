@@ -57,9 +57,9 @@ def validate_discovery_result(result: Dict[str, Any], budget: int) -> None:
     for ch in result.get("top_channels", []):
         delta = ch.get("delta_accuracy", 0.0)
         _check_finite(delta, "delta_accuracy")
-        if delta < 0:
+        if not (-100.0 <= delta <= 100.0):
             raise ResultValidationError(
-                f"delta_accuracy = {delta} is negative — fault injection worsened accuracy is valid but should be checked."
+                f"delta_accuracy = {delta} is outside valid physical range [-100, 100]."
             )
 
 

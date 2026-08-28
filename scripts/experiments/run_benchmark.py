@@ -21,11 +21,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
 from vulnshield.utils.provenance import ExperimentManifest
-from vulnshield.utils.config import load_config
-from vulnshield.utils.reproducibility import set_global_seed
+from vulnshield.utils.config import load_yaml
+from vulnshield.utils.reproducibility import set_seed
 from vulnshield.analysis.statistics import (
     compute_distribution_statistics,
     compute_paired_significance,
@@ -36,6 +36,16 @@ from vulnshield.validation.result_validator import (
     validate_discovery_result,
     ResultValidationError
 )
+from vulnshield.fault_injection.fault_injector import FaultInjector
+from vulnshield.training.evaluator import evaluate_model
+from vulnshield.models.model_factory import create_model
+from vulnshield.data.loaders import build_cifar10_dataloaders
+from vulnshield.discovery.env import FaultDiscoveryEnv
+from vulnshield.discovery.td3_agent import TD3Agent, TD3Config
+from vulnshield.baselines.random_baseline import run_random_baseline
+from vulnshield.baselines.activation_baseline import run_activation_baseline
+from vulnshield.baselines.gradient_baseline import run_gradient_baseline
+from vulnshield.baselines.ddpg_baseline import DDPGAgent, DDPGConfig
 
 
 SEEDS = [42, 123, 456, 789, 999]
@@ -67,15 +77,6 @@ def run_benchmark():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    from vulnshield.models.model_factory import build_model
-    from vulnshield.data.cifar10 import build_cifar10_loaders
-    from vulnshield.discovery.env import FaultDiscoveryEnv
-    from vulnshield.discovery.td3_agent import TD3Agent, TD3Config
-    from vulnshield.baselines.random_baseline import run_random_baseline
-    from vulnshield.baselines.activation_baseline import run_activation_baseline
-    from vulnshield.baselines.gradient_baseline import run_gradient_baseline
-    from vulnshield.baselines.ddpg_baseline import DDPGAgent, DDPGConfig
-
     if not args.debug:
         if not args.checkpoint or not Path(args.checkpoint).exists():
             raise FileNotFoundError(
@@ -84,7 +85,7 @@ def run_benchmark():
                 f"Train clean model first via scripts/models/train_{args.model}.py or pass --debug for smoke-testing."
             )
 
-    model = build_model(args.model)
+    model = create_model(args.model, num_classes=10, device=device)
     if args.checkpoint and Path(args.checkpoint).exists():
         ckpt = torch.load(args.checkpoint, map_location=device)
         state = ckpt.get("model_state_dict", ckpt)
@@ -95,11 +96,16 @@ def run_benchmark():
 
     model.eval().to(device)
 
-    loaders = build_cifar10_loaders(batch_size=64 if not args.debug else 32)
-    eval_loader = loaders["eval_fault"]
+    if args.debug:
+        # Synthetic fast dataset for debug / smoke-testing
+        dummy_images = torch.randn(64, 3, 32, 32)
+        dummy_labels = torch.randint(0, 10, (64,))
+        eval_loader = DataLoader(TensorDataset(dummy_images, dummy_labels), batch_size=32, shuffle=False)
+    else:
+        loaders = build_cifar10_dataloaders(data_dir=PROJECT_ROOT / "data" / "raw", seed=42)
+        eval_loader = loaders.eval_fault
 
     # Compute clean baseline accuracy once
-    from vulnshield.training.evaluator import evaluate_model
     clean_res = evaluate_model(model, eval_loader, device=device)
     clean_acc = clean_res.accuracy
     print(f"[*] Clean Baseline Accuracy: {clean_acc:.2f}%")
@@ -124,7 +130,7 @@ def run_benchmark():
         seed_aucs = []
 
         for seed in seeds:
-            set_global_seed(seed)
+            set_seed(seed)
 
             manifest = ExperimentManifest.create(
                 experiment_id=f"{args.model}_{method_name}_seed{seed}_q{budget}",
@@ -154,26 +160,54 @@ def run_benchmark():
                 result_file = baseline_dir / f"{args.model}_random_baseline_seed{seed}.json"
 
             elif method_name == "activation":
-                raw = run_activation_baseline(model, eval_loader, budget=budget, seed=seed, device=device)
-                top_ch = [{"layer_name": r["layer_name"], "channel_idx": r["channel_idx"],
-                            "delta_accuracy": r.get("activation_score", 0.0)} for r in raw]
+                candidates = run_activation_baseline(model, eval_loader, budget=budget, device=device)
+                injector = FaultInjector(model)
+                evaluated_channels = []
+                for cand in candidates:
+                    l_name = cand["layer_name"]
+                    c_idx = cand["channel_idx"]
+                    with injector.inject([(l_name, c_idx)]):
+                        f_res = evaluate_model(model, eval_loader, device=device)
+                    delta_a = clean_acc - f_res.accuracy
+                    evaluated_channels.append({
+                        "layer_name": l_name,
+                        "channel_idx": c_idx,
+                        "delta_accuracy": delta_a,
+                        "selection_score": cand["activation_score"]
+                    })
+                # Sort evaluated channels by true empirical fault degradation
+                evaluated_channels.sort(key=lambda x: x["delta_accuracy"], reverse=True)
                 res = {
-                    "top_channels": top_ch,
-                    "total_queries_executed": len(raw),
+                    "top_channels": evaluated_channels,
+                    "total_queries_executed": len(evaluated_channels),
                     "max_budget_enforced": budget,
-                    "episode_rewards": [r.get("activation_score", 0.0) for r in raw]
+                    "episode_rewards": [r["delta_accuracy"] for r in evaluated_channels]
                 }
                 result_file = baseline_dir / f"{args.model}_activation_baseline_seed{seed}.json"
 
             elif method_name == "gradient":
-                raw = run_gradient_baseline(model, eval_loader, budget=budget, seed=seed, device=device)
-                top_ch = [{"layer_name": r["layer_name"], "channel_idx": r["channel_idx"],
-                            "delta_accuracy": r.get("gradient_score", 0.0)} for r in raw]
+                candidates = run_gradient_baseline(model, eval_loader, budget=budget, device=device)
+                injector = FaultInjector(model)
+                evaluated_channels = []
+                for cand in candidates:
+                    l_name = cand["layer_name"]
+                    c_idx = cand["channel_idx"]
+                    with injector.inject([(l_name, c_idx)]):
+                        f_res = evaluate_model(model, eval_loader, device=device)
+                    delta_a = clean_acc - f_res.accuracy
+                    evaluated_channels.append({
+                        "layer_name": l_name,
+                        "channel_idx": c_idx,
+                        "delta_accuracy": delta_a,
+                        "selection_score": cand["gradient_score"]
+                    })
+                # Sort evaluated channels by true empirical fault degradation
+                evaluated_channels.sort(key=lambda x: x["delta_accuracy"], reverse=True)
                 res = {
-                    "top_channels": top_ch,
-                    "total_queries_executed": len(raw),
+                    "top_channels": evaluated_channels,
+                    "total_queries_executed": len(evaluated_channels),
                     "max_budget_enforced": budget,
-                    "episode_rewards": [r.get("gradient_score", 0.0) for r in raw]
+                    "episode_rewards": [r["delta_accuracy"] for r in evaluated_channels]
                 }
                 result_file = baseline_dir / f"{args.model}_gradient_baseline_seed{seed}.json"
 
@@ -191,7 +225,7 @@ def run_benchmark():
                 print(f"[VALIDATION ERROR] {e}")
                 continue
 
-            # Compute metrics
+            # Compute metrics on true empirical fault degradation ΔA
             top_ch = res.get("top_channels", [])
             top_d = top_ch[0]["delta_accuracy"] if top_ch else 0.0
             mean_d = sum(c["delta_accuracy"] for c in top_ch) / max(len(top_ch), 1)
@@ -207,7 +241,7 @@ def run_benchmark():
 
             manifest.record_artifact(result_file)
             manifest.save(result_file.parent / f"{result_file.stem}_manifest")
-            print(f"  [PASS] Seed={seed}: top_Δ={top_d:.2f}% | mean_Δ={mean_d:.2f}% | AUC={auc:.2f}")
+            print(f"  [PASS] Seed={seed}: top_delta={top_d:.2f}% | mean_delta={mean_d:.2f}% | AUC={auc:.2f}")
 
         per_seed_data[method_name] = {
             "top_delta": seed_top_deltas,
@@ -230,9 +264,9 @@ def run_benchmark():
                     "auc": seed_aucs
                 }
             }
-            print(f"\n[✓] {method_name.upper()} Summary: "
-                  f"top_Δ={stats.mean:.2f}±{stats.std:.2f}% "
-                  f"[95% CI: {stats.ci_lower:.2f}–{stats.ci_upper:.2f}%]")
+            print(f"\n[PASS] {method_name.upper()} Summary: "
+                  f"top_delta={stats.mean:.2f}+/-{stats.std:.2f}% "
+                  f"[95% CI: {stats.ci_lower:.2f} to {stats.ci_upper:.2f}%]")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Genuine Paired Statistical Significance (TD3 vs each baseline)
@@ -265,7 +299,7 @@ def run_benchmark():
                     "td3_seed_values": td3_deltas,
                     "baseline_seed_values": bl_deltas
                 }
-                print(f"  TD3 vs {bl.upper():10s} | t={paired_res['t_statistic']:6.3f} | p={p_val:7.4f} | d={paired_res['cohens_d']:6.3f} | Sig(p<0.05): {paired_res['is_significant_p05']}")
+                print(f"  TD3 vs {bl.upper():10s} | t={paired_res['t_statistic']:6.3f} | p(t)={p_val:7.4f} | p(W)={paired_res['p_value_nonparametric']:7.4f} | d={paired_res['cohens_d']:6.3f} | Sig(p<0.05): {paired_res['is_significant_p05']}")
 
         if p_values:
             rejected = holm_bonferroni_correction(p_values, alpha=0.05)
@@ -287,8 +321,7 @@ def run_benchmark():
         }, f, indent=2)
 
     print(f"\n[PASS] Aggregated benchmark saved: {agg_file}")
-    print("[NOTE] Per-seed significance testing requires individual seed arrays.")
-    print("[NOTE] Collect per-seed top_delta arrays into compute_paired_significance() for full p-values.")
+    print("[PASS] Multi-seed comparative discovery benchmark successfully completed.")
 
 
 if __name__ == "__main__":
