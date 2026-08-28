@@ -1,0 +1,49 @@
+name: VulnShield-DNN CI & Scientific Verification
+
+on:
+  push:
+    branches: [ main, master, dev, "feat/*" ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-and-test:
+    name: Test Suite & Scientific Verification
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e .
+          pip install pytest pytest-cov flake8
+
+      - name: Verify Directory Governance & Integrity
+        run: |
+          python scripts/setup/verify_project_structure.py
+
+      - name: Code Quality & Linting Check
+        run: |
+          # Stop build on syntax errors or undefined names
+          flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Warning check for PEP8 conformance
+          flake8 src/ tests/ --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
+
+      - name: Execute Full 12-Phase PyTest Suite
+        run: |
+          python -m pytest tests/ -v --tb=short

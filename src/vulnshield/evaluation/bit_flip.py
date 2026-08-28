@@ -2,9 +2,9 @@
 
 Simulates radiation-induced Single Event Upsets (SEUs) or memory bit-flips
 in 32-bit floating-point weights and activation registers:
-  - Sign bit: bit 31 (inverts sign)
-  - Exponent bits: bits 23-30 (causes catastrophic order-of-magnitude surges/underflows)
-  - Mantissa bits: bits 0-22 (minor numerical perturbations)
+  - Sign bit (1 bit): bit 31 (inverts sign)
+  - Exponent field (8 bits): bits 23-30 (causes order-of-magnitude surges/underflows)
+  - Mantissa field (23 bits): bits 0-22 (fine-grained numerical precision degradation)
 """
 
 from __future__ import annotations
@@ -21,10 +21,15 @@ from vulnshield.training.evaluator import evaluate_model
 from vulnshield.models.common import get_named_conv_layers
 
 
+# IEEE 754 Single-Precision Bit Field Mappings
+IEEE754_SIGN_BIT = 31
+IEEE754_EXPONENT_BITS = list(range(23, 31))    # 8 bits [23..30]
+IEEE754_MANTISSA_BITS = list(range(0, 23))     # 23 bits [0..22]
+
 BIT_POSITIONS = {
     "sign": 31,
-    "exponent": 27,   # Middle of the 8-bit exponent field [23..30]
-    "mantissa": 10    # Middle of the 23-bit mantissa field [0..22]
+    "exponent": 27,       # Representative MSB/LSB middle of exponent field
+    "mantissa": 10        # Representative middle mantissa bit
 }
 
 
@@ -38,6 +43,8 @@ def flip_float32_bit(tensor: torch.Tensor, bit_position: int) -> torch.Tensor:
     Returns:
         New Float32 tensor with the designated bit inverted.
     """
+    if bit_position < 0 or bit_position > 31:
+        raise ValueError(f"bit_position must be in [0, 31], got {bit_position}")
     # Cast float32 view to int32 without reinterpreting values
     int_view = tensor.view(torch.int32).clone()
     mask = 1 << bit_position
@@ -72,7 +79,6 @@ def evaluate_bit_flip_robustness(
 
     conv_layers = get_named_conv_layers(model)
     results_by_bit: Dict[str, float] = {}
-
     rng = random.Random(seed)
 
     for bit_type in target_bits:
@@ -109,3 +115,46 @@ def evaluate_bit_flip_robustness(
         results_by_bit[bit_type] = avg_acc
 
     return results_by_bit
+
+
+def evaluate_exhaustive_exponent_sweep(
+    model: nn.Module,
+    dataloader: DataLoader,
+    flips_per_layer: int = 5,
+    seed: int = 42,
+    device: Optional[torch.device] = None
+) -> Dict[int, float]:
+    """Exhaustively sweep all 8 exponent bit positions (bits 23 through 30).
+
+    Returns:
+        Dict mapping exponent bit index (23..30) to empirical classification accuracy.
+    """
+    dev = device or torch.device("cpu")
+    model.eval()
+    conv_layers = get_named_conv_layers(model)
+    results: Dict[int, float] = {}
+    rng = random.Random(seed)
+
+    for exp_bit in IEEE754_EXPONENT_BITS:
+        trial_accs = []
+        for name, layer in conv_layers:
+            w_shape = layer.weight.shape
+            total_elements = layer.weight.numel()
+            sample_indices = rng.sample(range(total_elements), k=min(flips_per_layer, total_elements))
+
+            for flat_idx in sample_indices:
+                orig_flat = layer.weight.data.view(-1).clone()
+                flipped_val = flip_float32_bit(orig_flat[flat_idx], exp_bit)
+                orig_flat[flat_idx] = flipped_val
+                layer.weight.data = orig_flat.view(w_shape)
+
+                with torch.no_grad():
+                    res = evaluate_model(model, dataloader, device=dev)
+                    trial_accs.append(res.accuracy)
+
+                orig_flat[flat_idx] = flip_float32_bit(flipped_val, exp_bit)
+                layer.weight.data = orig_flat.view(w_shape)
+
+        results[exp_bit] = sum(trial_accs) / max(len(trial_accs), 1)
+
+    return results

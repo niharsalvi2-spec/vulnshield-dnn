@@ -214,3 +214,13 @@ class TestDDPGAgent:
         action = agent.select_action(torch.randn(4), explore=False)
         assert action.shape == (2,)
         assert action.abs().max() <= 1.0 + 1e-5
+
+    def test_ddpg_run_discovery_obeys_budget(self, tiny_model, calib_loader):
+        from vulnshield.discovery.env import FaultDiscoveryEnv
+        env = FaultDiscoveryEnv(tiny_model, calib_loader, clean_accuracy=10.0, budget=10)
+        cfg = DDPGConfig(hidden_dim=32, warmup_steps=2)
+        agent = DDPGAgent(obs_dim=env.obs_dim, action_dim=env.action_dim, config=cfg, device=torch.device("cpu"))
+
+        res = agent.run_discovery(env, max_total_queries=6, verbose=False)
+        assert res["total_queries_executed"] == 6
+        assert res["max_budget_enforced"] == 6

@@ -188,50 +188,66 @@ class TD3Agent:
     def run_discovery(
         self,
         env: FaultDiscoveryEnv,
-        num_episodes: int = 20,
-        checkpoint_dir: Optional[Union[str, Path]] = None
+        max_total_queries: int = 50,
+        checkpoint_dir: Optional[Union[str, Path]] = None,
+        verbose: bool = True
     ) -> Dict[str, Any]:
-        """Run the full TD3 discovery loop over multiple episodes.
+        """Run TD3 discovery under a strictly enforced total query budget.
+
+        Mathematically guarantees query equivalence with heuristic baselines:
+            Total Fault Injections performed == max_total_queries.
 
         Args:
-            env: FaultDiscoveryEnv instance (pre-built with a trained model).
-            num_episodes: Total training episodes.
-            checkpoint_dir: If provided, saves TD3 actor/critic checkpoints here.
+            env: FaultDiscoveryEnv instance.
+            max_total_queries: Absolute maximum number of fault evaluations allowed.
+            checkpoint_dir: Directory to save TD3 checkpoints.
+            verbose: Enable console progress reporting.
 
         Returns:
-            Dict with discovered top channels and episode reward history.
+            Dict containing discovered channels and reward trajectory.
         """
         all_rewards: List[float] = []
         best_discoveries: List[Dict] = []
         step_count = 0
+        ep = 0
 
-        print(f"[*] TD3 Discovery: {num_episodes} episodes, budget={env.budget} steps/ep, device={self.device}")
+        # Adjust warmup so it doesn't exceed 20% of query budget if budget is small
+        warmup_limit = min(self.config.warmup_steps, int(max_total_queries * 0.2))
 
-        for ep in range(1, num_episodes + 1):
+        if verbose:
+            print(f"[*] TD3 Discovery: Strictly Enforced Global Budget = {max_total_queries} queries (Device: {self.device})")
+
+        while step_count < max_total_queries:
+            ep += 1
             state = env.reset()
             ep_reward = 0.0
             ep_discoveries: List[Dict] = []
 
             for _ in range(env.budget):
-                if step_count < self.config.warmup_steps:
-                    # Random exploration during warmup
+                if step_count >= max_total_queries:
+                    break
+
+                if step_count < warmup_limit:
+                    # Uniform random exploration during warmup
                     action = torch.rand(self.action_dim) * 2.0 - 1.0
                 else:
                     action = self.select_action(state, explore=True)
 
                 result = env.step(action)
+                step_count += 1
+
                 self.buffer.push(state, action, result.reward, result.observation, result.done)
                 self.update()
 
                 state = result.observation
                 ep_reward += result.reward
-                step_count += 1
 
                 if result.reward > 0:
                     ep_discoveries.append({
                         "layer_name": result.info["layer_name"],
                         "channel_idx": result.info["channel_idx"],
-                        "delta_accuracy": result.info["delta_accuracy"]
+                        "delta_accuracy": result.info["delta_accuracy"],
+                        "query_step": step_count
                     })
 
                 if result.done:
@@ -240,8 +256,8 @@ class TD3Agent:
             all_rewards.append(ep_reward)
             best_discoveries.extend(ep_discoveries)
 
-            avg_r = sum(all_rewards[-5:]) / min(len(all_rewards), 5)
-            print(f"  Episode {ep:3d}/{num_episodes} | Ep Reward: {ep_reward:.3f} | Avg(5): {avg_r:.3f} | Buffer: {len(self.buffer)}")
+            if verbose:
+                print(f"  Ep {ep:2d} | Ep Reward: {ep_reward:6.2f} | Queries Used: {step_count}/{max_total_queries}")
 
         # Save checkpoint
         if checkpoint_dir is not None:
@@ -249,7 +265,8 @@ class TD3Agent:
             save_dir.mkdir(parents=True, exist_ok=True)
             torch.save(self.actor.state_dict(), save_dir / "td3_actor.pt")
             torch.save(self.critic.state_dict(), save_dir / "td3_critic.pt")
-            print(f"[PASS] TD3 checkpoints saved to {save_dir}")
+            if verbose:
+                print(f"[PASS] TD3 checkpoints saved to {save_dir}")
 
         # Rank discoveries by ΔA
         best_discoveries.sort(key=lambda d: d["delta_accuracy"], reverse=True)
@@ -262,7 +279,9 @@ class TD3Agent:
         ranked = sorted(unique_channels.values(), key=lambda d: d["delta_accuracy"], reverse=True)
 
         return {
+            "total_queries_executed": step_count,
+            "max_budget_enforced": max_total_queries,
             "episode_rewards": all_rewards,
             "top_channels": ranked[:20],
-            "total_steps": step_count
+            "total_episodes": ep
         }

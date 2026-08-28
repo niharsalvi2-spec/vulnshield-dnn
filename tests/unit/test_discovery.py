@@ -203,3 +203,13 @@ class TestTD3AgentUpdate:
         metrics = agent.update()
         assert "critic_loss" in metrics
         assert metrics["critic_loss"] >= 0.0
+
+    def test_run_discovery_strictly_obeys_budget(self, tiny_model, eval_loader):
+        env = FaultDiscoveryEnv(tiny_model, eval_loader, clean_accuracy=10.0, budget=10)
+        cfg = TD3Config(hidden_dim=32, warmup_steps=2)
+        agent = TD3Agent(obs_dim=env.obs_dim, action_dim=env.action_dim, config=cfg, device=torch.device("cpu"))
+
+        # Strict budget bound: exactly 6 queries
+        res = agent.run_discovery(env, max_total_queries=6, verbose=False)
+        assert res["total_queries_executed"] == 6
+        assert res["max_budget_enforced"] == 6

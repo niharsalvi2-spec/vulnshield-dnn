@@ -26,16 +26,19 @@ def fgsm_attack(
 ) -> torch.Tensor:
     """Generate FGSM adversarial perturbations: x_adv = x + eps * sign(grad_x L)."""
     crit = criterion or nn.CrossEntropyLoss()
+    model.zero_grad(set_to_none=True)
     images_adv = images.clone().detach().requires_grad_(True)
 
-    logits = model(images_adv)
-    loss = crit(logits, labels)
-    loss.backward()
+    with torch.enable_grad():
+        logits = model(images_adv)
+        loss = crit(logits, labels)
+        loss.backward()
 
     with torch.no_grad():
         grad_sign = images_adv.grad.data.sign()
         images_adv = images + epsilon * grad_sign
 
+    model.zero_grad(set_to_none=True)
     return images_adv.detach()
 
 
@@ -49,7 +52,7 @@ def pgd_attack(
     random_start: bool = True,
     criterion: Optional[nn.Module] = None
 ) -> torch.Tensor:
-    """Generate PGD-k adversarial perturbations with projected gradient descent."""
+    """Generate PGD-k adversarial perturbations with clean iterative gradient isolation."""
     crit = criterion or nn.CrossEntropyLoss()
     images_orig = images.clone().detach()
 
@@ -59,10 +62,13 @@ def pgd_attack(
         images_adv = images_orig.clone()
 
     for _ in range(steps):
-        images_adv.requires_grad_(True)
-        logits = model(images_adv)
-        loss = crit(logits, labels)
-        loss.backward()
+        model.zero_grad(set_to_none=True)
+        images_adv = images_adv.clone().detach().requires_grad_(True)
+
+        with torch.enable_grad():
+            logits = model(images_adv)
+            loss = crit(logits, labels)
+            loss.backward()
 
         with torch.no_grad():
             grad_sign = images_adv.grad.data.sign()
@@ -71,6 +77,7 @@ def pgd_attack(
             delta = torch.clamp(images_adv - images_orig, min=-epsilon, max=epsilon)
             images_adv = images_orig + delta
 
+    model.zero_grad(set_to_none=True)
     return images_adv.detach()
 
 

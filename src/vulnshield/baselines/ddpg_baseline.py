@@ -158,45 +158,57 @@ class DDPGAgent:
     def run_discovery(
         self,
         env: FaultDiscoveryEnv,
-        num_episodes: int = 20
+        max_total_queries: int = 50,
+        verbose: bool = True
     ) -> Dict[str, Any]:
+        """Run DDPG baseline discovery under identical query budget constraint."""
         all_rewards: List[float] = []
         best_discoveries: List[Dict] = []
         step_count = 0
+        ep = 0
 
-        print(f"[*] DDPG Discovery: {num_episodes} episodes, budget={env.budget}")
+        warmup_limit = min(self.config.warmup_steps, int(max_total_queries * 0.2))
 
-        for ep in range(1, num_episodes + 1):
+        if verbose:
+            print(f"[*] DDPG Discovery: Strictly Enforced Global Budget = {max_total_queries} queries (Device: {self.device})")
+
+        while step_count < max_total_queries:
+            ep += 1
             state = env.reset()
             self.noise.reset()
             ep_reward = 0.0
 
             for _ in range(env.budget):
-                if step_count < self.config.warmup_steps:
+                if step_count >= max_total_queries:
+                    break
+
+                if step_count < warmup_limit:
                     action = torch.rand(self.action_dim) * 2.0 - 1.0
                 else:
                     action = self.select_action(state, explore=True)
 
                 result = env.step(action)
+                step_count += 1
+
                 self.buffer.push(state, action, result.reward, result.observation, result.done)
                 self.update()
 
                 state = result.observation
                 ep_reward += result.reward
-                step_count += 1
 
                 if result.reward > 0:
                     best_discoveries.append({
                         "layer_name": result.info["layer_name"],
                         "channel_idx": result.info["channel_idx"],
-                        "delta_accuracy": result.info["delta_accuracy"]
+                        "delta_accuracy": result.info["delta_accuracy"],
+                        "query_step": step_count
                     })
                 if result.done:
                     break
 
             all_rewards.append(ep_reward)
-            avg = sum(all_rewards[-5:]) / min(len(all_rewards), 5)
-            print(f"  Episode {ep:3d}/{num_episodes} | Ep Reward: {ep_reward:.3f} | Avg(5): {avg:.3f}")
+            if verbose:
+                print(f"  Ep {ep:2d} | Ep Reward: {ep_reward:6.2f} | Queries Used: {step_count}/{max_total_queries}")
 
         best_discoveries.sort(key=lambda d: d["delta_accuracy"], reverse=True)
         unique: Dict[str, Dict] = {}
@@ -206,7 +218,9 @@ class DDPGAgent:
                 unique[k] = d
 
         return {
+            "total_queries_executed": step_count,
+            "max_budget_enforced": max_total_queries,
             "episode_rewards": all_rewards,
             "top_channels": sorted(unique.values(), key=lambda d: d["delta_accuracy"], reverse=True)[:20],
-            "total_steps": step_count
+            "total_episodes": ep
         }

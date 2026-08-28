@@ -2,13 +2,23 @@
 
 **TD3-Based Fault-Sensitive Channel Identification, Multi-Channel Interaction Dynamics, and Budget-Aware Fault Hardening for Deep Neural Networks**
 
+[![CI Status](https://github.com/niharsalvi2-spec/vulnshield-dnn/actions/workflows/ci.yml/badge.svg)](https://github.com/niharsalvi2-spec/vulnshield-dnn/actions)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python)](https://www.python.org/downloads/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg?logo=pytorch)](https://pytorch.org/)
 [![CUDA 12.4+](https://img.shields.io/badge/CUDA-12.4%2B-76b900.svg?logo=nvidia)](https://developer.nvidia.com/cuda-toolkit)
-[![Test Suite: 128 Passed](https://img.shields.io/badge/pytest-128%20passed%20(100%25)-brightgreen.svg?logo=pytest)](file:///tests/)
+[![Test Suite: 132 Passed](https://img.shields.io/badge/pytest-132%20passed%20(100%25)-brightgreen.svg?logo=pytest)](file:///tests/)
 [![Architecture: ResNet18 & VGG16](https://img.shields.io/badge/Models-ResNet18%20%7C%20VGG16-orange.svg)](file:///src/vulnshield/models/)
-[![Dataset: CIFAR-10](https://img.shields.io/badge/Dataset-CIFAR--10-purple.svg)](file:///src/vulnshield/data/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+---
+
+## 🎯 Core Research Questions (RQs)
+
+VulnShield-DNN is structured to empirically answer three central research questions for conference-grade publication:
+
+* **RQ1 (Discovery Efficiency):** *Can continuous Twin Delayed DDPG (TD3) identify high-impact, fault-vulnerable channels more efficiently than competing heuristic baselines (Random, Mean Activation $L_1$, Taylor 1st-Order Gradient, Layer-wise DDPG) under a strictly equal query budget ($N_{\text{queries}} = 50$)?*
+* **RQ2 (Multi-Channel Interaction Dynamics):** *Do concurrently faulted channels exhibit non-additive cross-layer interaction dynamics (compounding failures $I(A,B) > +1\%$ vs. masking effects $I(A,B) < -1\%$) that invalidate isolated single-channel vulnerability models?*
+* **RQ3 (Budget-Constrained Selective Protection):** *Can vulnerability-guided selective hardening under tightly constrained budgets ($1\%, 3\%, 5\%, 10\%$ channels) significantly elevate fault tolerance across multiple failure modes (stuck-at-zero, simultaneous multi-faults, IEEE 754 float32 bit-flips) while strictly preserving $\ge 99\%$ of baseline clean accuracy?*
 
 ---
 
