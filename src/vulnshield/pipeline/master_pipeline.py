@@ -346,33 +346,78 @@ class VulnShieldMasterPipeline:
         return self.evaluation_reports
 
     def run_stage_8_reporting(self) -> Path:
-        """Stage 8: Final Report & Artifact Generation."""
+        """Stage 8: Final Report & Artifact Generation from strictly empirical outputs."""
         print("\n" + "=" * 65)
         print("STAGE 8: Automated Report & Publication Artifacts")
         print("=" * 65)
-        disc_table_data = [
-            {"method": "Random Search", "top_delta": 6.80, "mean_delta": 1.20, "budget": 50, "strategy": "Uniform"},
-            {"method": "Activation Magnitude", "top_delta": 9.40, "mean_delta": 2.50, "budget": 50, "strategy": "Mean L1"},
-            {"method": "Taylor 1st-Order", "top_delta": 12.10, "mean_delta": 3.80, "budget": 50, "strategy": "Grad * Act"},
-            {"method": "Layer-wise DDPG", "top_delta": 13.50, "mean_delta": 4.10, "budget": 50, "strategy": "Single Q RL"},
-            {"method": "VulnShield TD3 (Ours)", "top_delta": 16.80, "mean_delta": 5.90, "budget": 50, "strategy": "Twin Q + Smoothing"}
-        ]
-        prot_table_data = [
-            {"model_label": "Clean Baseline", "clean_acc": 93.2, "known_acc": 76.4, "unseen_acc": 88.5, "two_fault_acc": 71.2, "five_fault_acc": 58.0},
-            {"model_label": "Protected (1%)", "clean_acc": 93.1, "known_acc": 84.5, "unseen_acc": 89.2, "two_fault_acc": 79.8, "five_fault_acc": 66.4},
-            {"model_label": "Protected (3%)", "clean_acc": 92.9, "known_acc": 88.2, "unseen_acc": 90.1, "two_fault_acc": 84.1, "five_fault_acc": 73.5},
-            {"model_label": "Protected (5%)", "clean_acc": 92.8, "known_acc": 90.4, "unseen_acc": 91.0, "two_fault_acc": 87.3, "five_fault_acc": 78.9},
-            {"model_label": "Protected (10%)", "clean_acc": 92.4, "known_acc": 91.2, "unseen_acc": 91.5, "two_fault_acc": 88.6, "five_fault_acc": 81.2}
-        ]
 
-        # Figures
+        # 1. Dynamically assemble discovery comparison data
+        disc_table_data = []
+        if self.discovery_results and "top_channels" in self.discovery_results:
+            top_ch = self.discovery_results["top_channels"]
+            top_d = top_ch[0]["delta_accuracy"] if top_ch else 0.0
+            mean_d = sum(c["delta_accuracy"] for c in top_ch) / max(len(top_ch), 1)
+            disc_table_data.append({
+                "method": "VulnShield TD3 (Ours)",
+                "top_delta": top_d,
+                "mean_delta": mean_d,
+                "budget": self.discovery_results.get("max_budget_enforced", self.config.discovery_budget),
+                "strategy": "Twin Q + Policy Smoothing"
+            })
+
+        for b_name, b_res in self.baseline_results.items():
+            if isinstance(b_res, list) and b_res:
+                top_d = b_res[0].get("delta_accuracy", b_res[0].get("activation_score", 0.0))
+                mean_d = sum(r.get("delta_accuracy", 0.0) for r in b_res) / max(len(b_res), 1)
+                disc_table_data.append({
+                    "method": b_name.capitalize(),
+                    "top_delta": top_d,
+                    "mean_delta": mean_d,
+                    "budget": len(b_res),
+                    "strategy": "Baseline Selector"
+                })
+            elif isinstance(b_res, dict) and "top_channels" in b_res:
+                top_ch = b_res["top_channels"]
+                top_d = top_ch[0]["delta_accuracy"] if top_ch else 0.0
+                mean_d = sum(c["delta_accuracy"] for c in top_ch) / max(len(top_ch), 1)
+                disc_table_data.append({
+                    "method": b_name.upper(),
+                    "top_delta": top_d,
+                    "mean_delta": mean_d,
+                    "budget": b_res.get("max_budget_enforced", self.config.discovery_budget),
+                    "strategy": "Baseline Agent"
+                })
+
+        # 2. Dynamically assemble protection budget data
+        prot_table_data = []
+        clean_base = self.clean_accuracy
+        for b_pct in self.config.protection_budgets:
+            pct_int = int(b_pct * 100)
+            prot_eval = self.evaluation_reports.get(f"protected_b{pct_int}pct", {})
+            if prot_eval:
+                prot_table_data.append({
+                    "model_label": f"Protected ({pct_int}%)",
+                    "clean_acc": prot_eval.get("dim1_clean", {}).get("accuracy", clean_base),
+                    "known_acc": prot_eval.get("dim2_known_faults", {}).get("mean_accuracy", 0.0),
+                    "unseen_acc": prot_eval.get("dim3_unseen_faults", {}).get("mean_accuracy", 0.0),
+                    "two_fault_acc": prot_eval.get("dim4_multi_faults", {}).get("2_faults", 0.0),
+                    "five_fault_acc": prot_eval.get("dim4_multi_faults", {}).get("5_faults", 0.0)
+                })
+
+        # 3. Generate figures if data is available
         fig_dir = Path(self.paths.paths.artifacts.figures)
         fig_dir.mkdir(parents=True, exist_ok=True)
-        plot_discovery_comparison(disc_table_data, fig_dir / f"{self.config.model_name}_discovery_comparison.png")
-        plot_budget_tradeoff_curve([0.0, 0.01, 0.03, 0.05, 0.10], [93.2, 93.1, 92.9, 92.8, 92.4], [76.4, 84.5, 88.2, 90.4, 91.2], fig_dir / f"{self.config.model_name}_budget_tradeoff.png")
-        plot_radar_evaluation(["Clean", "Known", "Unseen", "2-Fault", "5-Fault", "Bit-Flip"], [93.2, 76.4, 88.5, 71.2, 58.0, 82.0], [92.8, 90.4, 91.0, 87.3, 78.9, 91.5], fig_dir / f"{self.config.model_name}_radar_evaluation.png")
 
-        # Report
+        if disc_table_data:
+            plot_discovery_comparison(disc_table_data, fig_dir / f"{self.config.model_name}_discovery_comparison.png")
+
+        if len(prot_table_data) > 1:
+            budgets = [0.0] + [b for b in self.config.protection_budgets[:len(prot_table_data)]]
+            clean_accs = [clean_base] + [d["clean_acc"] for d in prot_table_data]
+            fault_accs = [0.0] + [d["known_acc"] for d in prot_table_data]
+            plot_budget_tradeoff_curve(budgets, clean_accs, fault_accs, fig_dir / f"{self.config.model_name}_budget_tradeoff.png")
+
+        # 4. Report
         rep_path = Path(self.paths.paths.reports) / f"{self.config.model_name}_final_research_report.md"
         build_research_report(
             model_name=self.config.model_name,
@@ -381,7 +426,7 @@ class VulnShieldMasterPipeline:
             interaction_summary=self.interaction_summary,
             output_path=rep_path
         )
-        print(f"[PASS] Master Research Report compiled: {rep_path}")
+        print(f"[PASS] Master Research Report compiled from live results: {rep_path}")
         return rep_path
 
     def run_full_pipeline(self) -> None:

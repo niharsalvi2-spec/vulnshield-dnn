@@ -61,8 +61,14 @@ def plot_all_figures(model_name: str):
 
     # 2. Load Budget Trade-Off Curve Data
     prot_dir = Path(resolved_paths.paths.results.protection)
+    clean_eval_file = Path(resolved_paths.paths.results.final) / f"{model_name}_clean_eval.json"
+    base_clean = 0.0
+    if clean_eval_file.exists():
+        with open(clean_eval_file, "r") as f:
+            base_clean = json.load(f).get("clean_accuracy", 0.0)
+
     budgets = [0.0]
-    clean_accs = [93.0]
+    clean_accs = [base_clean]
     fault_accs = [0.0]
 
     for b_pct in [0.01, 0.03, 0.05, 0.10]:
@@ -72,10 +78,10 @@ def plot_all_figures(model_name: str):
             with open(p_file, "r") as f:
                 p_res = json.load(f)
                 budgets.append(b_pct)
-                clean_accs.append(p_res.get("best_clean_acc", 93.0))
+                clean_accs.append(p_res.get("best_clean_acc", base_clean))
                 fault_accs.append(p_res.get("best_fault_acc", 0.0))
 
-    if len(budgets) > 1:
+    if len(budgets) > 1 and base_clean > 0.0:
         p2 = figures_dir / f"{model_name}_budget_tradeoff.png"
         plot_budget_tradeoff_curve(budgets, clean_accs, fault_accs, output_path=p2, title=f"Budget Trade-Off Curve — {model_name.upper()}")
         print(f"[PASS] Budget trade-off curve: {p2}")
