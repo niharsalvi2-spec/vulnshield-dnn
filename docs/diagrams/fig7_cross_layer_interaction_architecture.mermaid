@@ -1,0 +1,61 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#172033",
+    "lineColor": "#64748B"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "nodeSpacing": 45,
+    "rankSpacing": 60,
+    "padding": 18
+  }
+}}%%
+
+flowchart TB
+
+    A["<b>RANKED VULNERABLE CHANNELS</b>"]
+
+    B["<b>CROSS-LAYER PAIR SELECTION</b><br/>Channel i from Layer Lᵢ<br/>Channel j from Layer Lⱼ<br/>Lᵢ ≠ Lⱼ"]
+
+    C["<b>INDIVIDUAL FAULT TEST</b>"]
+
+    D1["Channel i<br/><b>Dᵢ</b>"]
+
+    D2["Channel j<br/><b>Dⱼ</b>"]
+
+    E["<b>SIMULTANEOUS FAULT TEST</b>"]
+
+    F["Channels i + j<br/><b>Dᵢⱼ</b>"]
+
+    G["<b>INDEPENDENT REFERENCE</b><br/>d_ref"]
+
+    H["<b>INTERACTION INDICATOR</b><br/>Iᵢⱼ = dᵢⱼ − d_ref"]
+
+    I["<b>INTERACTION CLASSIFICATION</b><br/>Amplification · Masking · Other"]
+
+    A --> B
+    B --> C
+    B --> E
+    C --> D1
+    C --> D2
+    D1 --> G
+    D2 --> G
+    E --> F
+    F --> H
+    G --> H
+    H --> I
+
+    classDef input fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A;
+    classDef selection fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95;
+    classDef individual fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef simultaneous fill:#FCE7F3,stroke:#DB2777,stroke-width:2px,color:#831843;
+    classDef analysis fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#14532D;
+
+    class A input;
+    class B selection;
+    class C,D1,D2 individual;
+    class E,F simultaneous;
+    class G,H,I analysis;

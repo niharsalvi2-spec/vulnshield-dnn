@@ -1,0 +1,62 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#172033",
+    "lineColor": "#64748B"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "nodeSpacing": 45,
+    "rankSpacing": 55,
+    "padding": 18
+  }
+}}%%
+
+flowchart TB
+
+    A["<b>VULNERABILITY RANKING</b>"]
+
+    B["<b>PROTECTION BUDGET</b><br/>1% · 3% · 5% · 10%"]
+
+    C["<b>SELECT HIGH-RISK CHANNELS</b>"]
+
+    D["<b>FAULT-AWARE TRAINING DATA</b>"]
+
+    E1["Clean Input<br/>Normal DNN"]
+
+    E2["Clean Input<br/>Selected Channel Faulted"]
+
+    F1["Clean Classification Loss<br/><b>L_clean</b>"]
+
+    F2["Faulted Classification Loss<br/><b>L_fault</b>"]
+
+    G["<b>COMBINED TRAINING OBJECTIVE</b><br/>L_total = αL_clean + (1−α)L_fault"]
+
+    H["<b>PARAMETER UPDATE</b><br/>Fine-Tune DNN"]
+
+    I["<b>PROTECTED DNN</b>"]
+
+    A --> B --> C --> D
+    D --> E1
+    D --> E2
+    E1 --> F1
+    E2 --> F2
+    F1 --> G
+    F2 --> G
+    G --> H --> I
+
+    classDef ranking fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#14532D;
+    classDef budget fill:#FCE7F3,stroke:#DB2777,stroke-width:2px,color:#831843;
+    classDef data fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A;
+    classDef loss fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef training fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95;
+    classDef output fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B;
+
+    class A ranking;
+    class B,C budget;
+    class D,E1,E2 data;
+    class F1,F2 loss;
+    class G,H training;
+    class I output;

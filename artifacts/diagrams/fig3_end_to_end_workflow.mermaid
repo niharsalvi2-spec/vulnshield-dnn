@@ -1,0 +1,57 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#172033",
+    "lineColor": "#64748B"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "nodeSpacing": 35,
+    "rankSpacing": 55,
+    "padding": 18
+  }
+}}%%
+
+flowchart TB
+
+    A["<b>1. TRAIN DNN</b><br/>CIFAR-10<br/>ResNet-18 / VGG-16"]
+
+    B["<b>2. ESTABLISH CLEAN BASELINE</b><br/>Accuracy · Loss"]
+
+    C["<b>3. INJECT CONTROLLED FAULT</b><br/>Channel Stuck-at-Zero"]
+
+    D["<b>4. MEASURE FAULT IMPACT</b><br/>Accuracy Degradation"]
+
+    E["<b>5. TD3 SEARCH</b><br/>Adaptive Channel Selection"]
+
+    F["<b>6. BUILD VULNERABILITY RANKING</b><br/>Prioritize High-Impact Channels"]
+
+    G["<b>7. CROSS-LAYER ANALYSIS</b><br/>Individual vs Simultaneous Faults"]
+
+    H["<b>8. SELECT PROTECTION SET</b><br/>Budget: 1% · 3% · 5% · 10%"]
+
+    I["<b>9. FAULT-AWARE FINE-TUNING</b><br/>Clean + Faulted Objective"]
+
+    J["<b>10. EVALUATE PROTECTED DNN</b><br/>Clean Accuracy · Fault Robustness"]
+
+    A --> B --> C --> D --> E --> F
+    F --> G
+    F --> H
+    G --> H
+    H --> I --> J
+
+    classDef stage1 fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E;
+    classDef stage2 fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef stage3 fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95;
+    classDef stage4 fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#14532D;
+    classDef stage5 fill:#FCE7F3,stroke:#DB2777,stroke-width:2px,color:#831843;
+    classDef output fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B;
+
+    class A,B stage1;
+    class C,D stage2;
+    class E,F stage3;
+    class G,H stage4;
+    class I stage5;
+    class J output;

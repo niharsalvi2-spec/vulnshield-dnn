@@ -1,0 +1,47 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#172033",
+    "lineColor": "#64748B"
+  },
+  "flowchart": {
+    "curve": "orthogonal",
+    "nodeSpacing": 45,
+    "rankSpacing": 55,
+    "padding": 18
+  }
+}}%%
+
+flowchart LR
+
+    A["<b>TRAINED DNN</b><br/>Convolutional Layer"]
+
+    B["<b>SELECTED CHANNEL</b><br/>Feature-Map Channel<br/>(Layer, Channel)"]
+
+    C["<b>FORWARD HOOK</b><br/>Runtime Intervention"]
+
+    D["<b>STUCK-AT-ZERO FAULT</b><br/>X[:, c, :, :] = 0"]
+
+    E["<b>FAULTED FEATURE MAP</b><br/>Remaining Channels Unchanged"]
+
+    F["<b>FORWARD PROPAGATION</b><br/>Through Remaining Network"]
+
+    G["<b>FAULTED PREDICTION</b>"]
+
+    H["<b>FAULT IMPACT</b><br/>Accuracy Degradation<br/>Loss Change"]
+
+    A --> B --> C --> D --> E --> F --> G --> H
+
+    classDef model fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A;
+    classDef selection fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95;
+    classDef injection fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef propagation fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#14532D;
+    classDef measurement fill:#FCE7F3,stroke:#DB2777,stroke-width:2px,color:#831843;
+
+    class A model;
+    class B,C selection;
+    class D injection;
+    class E,F,G propagation;
+    class H measurement;
