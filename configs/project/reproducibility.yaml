@@ -1,0 +1,8 @@
+# VulnShield-DNN Reproducibility & Random Seed Configuration
+reproducibility:
+  master_seed: 42
+  evaluation_seeds: [42, 123, 456, 789, 999]
+  cuda_deterministic: true
+  cuda_benchmark: false
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true

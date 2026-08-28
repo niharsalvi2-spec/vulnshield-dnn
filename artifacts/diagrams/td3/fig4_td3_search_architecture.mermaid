@@ -1,0 +1,66 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#172033",
+    "lineColor": "#64748B"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "nodeSpacing": 50,
+    "rankSpacing": 60,
+    "padding": 20
+  }
+}}%%
+
+flowchart TB
+
+    S["<b>VULNERABILITY SEARCH STATE</b><br/>Candidate Location · Previous Observations · Search Information"]
+
+    A["<b>TD3 ACTOR</b><br/>Continuous Action Representation"]
+
+    M["<b>ACTION-TO-LOCATION MAPPING</b><br/>Continuous Action<br/>→ Candidate-Location Embedding<br/>→ Valid (Layer, Channel)"]
+
+    F["<b>FAULT INJECTION ENVIRONMENT</b><br/>Selected Feature-Map Channel<br/>Stuck-at-Zero Fault"]
+
+    X["<b>DNN INFERENCE</b><br/>Faulted Prediction"]
+
+    R["<b>FAULT-IMPACT REWARD</b><br/>Accuracy Degradation"]
+
+    B["<b>REPLAY BUFFER</b><br/>(State, Action, Reward, Next State)"]
+
+    C1["<b>CRITIC 1</b><br/>Q₁"]
+
+    C2["<b>CRITIC 2</b><br/>Q₂"]
+
+    U["<b>DELAYED ACTOR / TARGET UPDATE</b><br/>TD3 Update Mechanisms"]
+
+    S --> A
+    A --> M
+    M --> F
+    F --> X
+    X --> R
+    R --> B
+    B --> C1
+    B --> C2
+    C1 --> U
+    C2 --> U
+    U --> A
+    R --> S
+
+    classDef state fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A;
+    classDef actor fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95;
+    classDef mapping fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87;
+    classDef fault fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef inference fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#14532D;
+    classDef reward fill:#FCE7F3,stroke:#DB2777,stroke-width:2px,color:#831843;
+    classDef critic fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#1E293B;
+
+    class S state;
+    class A actor;
+    class M mapping;
+    class F fault;
+    class X inference;
+    class R reward;
+    class B,C1,C2,U critic;

@@ -1,0 +1,19 @@
+# VulnShield-DNN Multi-Channel Fault Interaction Configuration
+interaction:
+  # Evaluation scope
+  top_k_channels: 20             # Evaluate pairwise interactions among top-K discovered channels
+  max_simultaneous_faults: 3     # Maximum simultaneous faults (2=pairwise, 3=triplet)
+  
+  # Metrics classification thresholds
+  synergy_threshold: 1.0         # I(A, B) > +1.0% -> Compounding / Synergistic
+  masking_threshold: -1.0        # I(A, B) < -1.0% -> Masking / Antagonistic
+  
+  # Dataset evaluation
+  use_eval_subset: true          # Use 1000-sample eval_fault subset for fast pairwise search
+  batch_size: 128
+  
+  # Visualization
+  plot:
+    colormap: "coolwarm"
+    save_format: "png"
+    dpi: 300

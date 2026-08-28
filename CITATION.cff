@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Sonawane"
+    given-names: "Ishwar"
+  - family-names: "Bhagat"
+    given-names: "Adhya"
+  - family-names: "Salvi"
+    given-names: "Nihar"
+title: "VulnShield-DNN: TD3-Based Fault-Sensitive Channel Identification, Cross-Layer Interaction Analysis, and Budget-Aware Robustness Enhancement for Deep Neural Networks"
+version: 0.1.0
+date-released: 2026-08-28
+url: "https://github.com/nihar-salvi/VulnShield-DNN"

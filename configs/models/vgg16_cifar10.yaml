@@ -1,0 +1,28 @@
+# VulnShield-DNN VGG-16 CIFAR-10 Model Configuration
+model:
+  name: "vgg16"
+  architecture: "cifar_vgg16"
+  num_classes: 10
+  in_channels: 3
+  
+  # Structural Hyperparameters
+  use_batch_norm: true
+  dropout_rate: 0.5
+  classifier_hidden_dim: 512
+  
+  # Layer Configurations (13 conv layers across 5 pooling stages)
+  block_channels:
+    block1: [64, 64]
+    block2: [128, 128]
+    block3: [256, 256, 256]
+    block4: [512, 512, 512]
+    block5: [512, 512, 512]
+    
+training_defaults:
+  optimizer: "sgd"
+  learning_rate: 0.05
+  momentum: 0.9
+  weight_decay: 0.0005
+  scheduler: "cosine"
+  epochs: 100
+  batch_size: 128

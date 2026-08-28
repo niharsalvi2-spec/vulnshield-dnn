@@ -1,0 +1,30 @@
+# VulnShield-DNN ResNet-18 CIFAR-10 Model Configuration
+model:
+  name: "resnet18"
+  architecture: "cifar_resnet18"
+  num_classes: 10
+  in_channels: 3
+  
+  # Structural Hyperparameters
+  initial_conv:
+    kernel_size: 3
+    stride: 1
+    padding: 1
+    bias: false
+  has_initial_maxpool: false
+  
+  # Stage Channels
+  stage_channels: [64, 128, 256, 512]
+  stage_blocks: [2, 2, 2, 2]
+  
+  # Classifier Head
+  dropout_rate: 0.0
+  
+training_defaults:
+  optimizer: "sgd"
+  learning_rate: 0.1
+  momentum: 0.9
+  weight_decay: 0.0005
+  scheduler: "cosine"
+  epochs: 100
+  batch_size: 128

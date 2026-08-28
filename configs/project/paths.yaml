@@ -1,0 +1,41 @@
+# VulnShield-DNN Filesystem Paths Configuration
+paths:
+  root: "{project_root}"
+  
+  data:
+    raw: "{project_root}/data/raw"
+    interim: "{project_root}/data/interim"
+    processed: "{project_root}/data/processed"
+    metadata: "{project_root}/data/metadata"
+    channel_catalogs: "{project_root}/data/metadata/channel_catalogs"
+    
+  checkpoints:
+    base_models: "{project_root}/checkpoints/base_models"
+    td3: "{project_root}/checkpoints/td3"
+    ddpg: "{project_root}/checkpoints/ddpg"
+    protected: "{project_root}/checkpoints/protected"
+    
+  results:
+    root: "{project_root}/results"
+    discovery: "{project_root}/results/discovery"
+    vulnerability: "{project_root}/results/vulnerability"
+    interaction: "{project_root}/results/interaction"
+    adversarial: "{project_root}/results/adversarial"
+    protection: "{project_root}/results/protection"
+    evaluation: "{project_root}/results/evaluation"
+    metrics: "{project_root}/results/metrics"
+    final: "{project_root}/results/final"
+    
+  logs:
+    root: "{project_root}/logs"
+    training: "{project_root}/logs/training"
+    experiments: "{project_root}/logs/experiments"
+    system: "{project_root}/logs/system"
+    
+  artifacts:
+    figures: "{project_root}/artifacts/figures"
+    tables: "{project_root}/artifacts/tables"
+    diagrams: "{project_root}/artifacts/diagrams"
+    
+  reports: "{project_root}/reports"
+  temp: "{project_root}/temp"

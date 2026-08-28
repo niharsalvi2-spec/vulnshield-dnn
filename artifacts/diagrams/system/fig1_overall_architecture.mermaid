@@ -1,0 +1,65 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "15px",
+    "primaryTextColor": "#172033",
+    "lineColor": "#475569",
+    "clusterBkg": "#F8FAFC",
+    "clusterBorder": "#CBD5E1"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "nodeSpacing": 55,
+    "rankSpacing": 65,
+    "padding": 20
+  }
+}}%%
+
+flowchart TB
+
+    A["<b>TRAINED DNN</b><br/>CIFAR-10<br/>ResNet-18 / VGG-16"]
+
+    B["<b>SOFTWARE FAULT INJECTION</b><br/>Controlled Channel Stuck-at-Zero<br/>Convolutional Feature-Map Channels"]
+
+    C["<b>TD3-BASED VULNERABILITY SEARCH</b><br/>Adaptive Fault-Location Selection"]
+
+    D["<b>CHANNEL VULNERABILITY RANKING</b><br/>Fault-Impact-Based Prioritization"]
+
+    E["<b>CROSS-LAYER INTERACTION ANALYSIS</b><br/>Individual vs Simultaneous Faults"]
+
+    F["<b>VULNERABILITY-AWARE<br/>FAULT FINE-TUNING</b><br/>Clean + Faulted Training Objective"]
+
+    G["<b>BUDGET-AWARE PROTECTION</b><br/>1% · 3% · 5% · 10%"]
+
+    H["<b>PROTECTED DNN</b><br/>Clean Accuracy + Fault Robustness"]
+
+    I["<b>EVALUATION</b><br/>Robustness · Accuracy · Search Efficiency<br/>Protection Efficiency · Computational Cost"]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    D --> F
+    F --> G
+    E --> G
+    G --> H
+    H --> I
+
+    classDef input fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E;
+    classDef fault fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef rl fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95;
+    classDef analysis fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#14532D;
+    classDef protection fill:#FCE7F3,stroke:#DB2777,stroke-width:2px,color:#831843;
+    classDef output fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B;
+    classDef evaluation fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#1E293B;
+
+    class A input;
+    class B fault;
+    class C rl;
+    class D analysis;
+    class E analysis;
+    class F protection;
+    class G protection;
+    class H output;
+    class I evaluation;

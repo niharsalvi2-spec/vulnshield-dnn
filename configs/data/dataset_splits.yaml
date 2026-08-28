@@ -1,0 +1,9 @@
+# VulnShield-DNN Dataset Splits Configuration
+splits:
+  dataset: "cifar10"
+  train_samples: 45000
+  val_samples: 5000
+  test_samples: 10000
+  stratified: true
+  split_seed: 42
+  eval_fault_batch_samples: 1000  # Standard fixed batch for fast vulnerability discovery evaluation

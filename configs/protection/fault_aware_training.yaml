@@ -1,0 +1,18 @@
+# VulnShield-DNN Fault-Aware Fine-Tuning Configuration
+fine_tuning:
+  # Loss objective balance: L_total = alpha * L_clean + beta * L_fault
+  alpha: 0.5                     # Weight for clean loss
+  beta: 0.5                      # Weight for fault-injected loss
+  
+  # Optimization
+  epochs: 30                     # Fine-tuning takes fewer epochs than clean training
+  learning_rate: 0.01            # Lower LR to preserve pre-trained features
+  optimizer: "sgd"
+  momentum: 0.9
+  weight_decay: 0.0005
+  scheduler: "cosine"
+  eta_min: 1e-5
+  batch_size: 128
+  
+  # Fault injection sampling per batch during training
+  faults_per_step: 1             # Number of channels from budget set faulted per forward pass

@@ -1,0 +1,42 @@
+# VulnShield-DNN CIFAR-10 Dataset Configuration
+dataset:
+  name: "cifar10"
+  num_classes: 10
+  image_size: [32, 32]
+  channels: 3
+  class_names:
+    - "airplane"
+    - "automobile"
+    - "bird"
+    - "cat"
+    - "deer"
+    - "dog"
+    - "frog"
+    - "horse"
+    - "ship"
+    - "truck"
+    
+normalization:
+  mean: [0.4914, 0.4822, 0.4465]
+  std: [0.2470, 0.2435, 0.2616]
+  
+augmentation:
+  train:
+    random_crop:
+      size: 32
+      padding: 4
+      padding_mode: "reflect"
+    random_horizontal_flip:
+      p: 0.5
+  test:
+    # Deterministic test transform (normalization only)
+    apply_augmentation: false
+
+dataloader:
+  train_batch_size: 128
+  val_batch_size: 128
+  test_batch_size: 128
+  eval_fault_batch_size: 128
+  num_workers: 4
+  pin_memory: true
+  drop_last: false

@@ -1,0 +1,29 @@
+# VulnShield-DNN Comprehensive Multi-Dimensional Evaluation Configuration
+evaluation:
+  # Dimension 1: Clean Accuracy
+  clean:
+    max_tolerable_drop: 1.0       # Max allowable clean accuracy drop (%)
+    
+  # Dimension 2 & 3: Channel Faults
+  channel_faults:
+    num_unseen_samples: 50        # Random unseen channels to evaluate generalization
+    
+  # Dimension 4: Simultaneous Multi-Faults
+  multi_faults:
+    fault_counts: [2, 3, 5]       # Number of simultaneous faulted channels
+    trials_per_count: 20          # Random combinations evaluated per count
+    
+  # Dimension 5: Physical Bit-Flip Fault Simulation (IEEE 754 float32)
+  bit_flip:
+    target_bits: ["sign", "exponent", "mantissa"]  # Bit positions within 32-bit float
+    flips_per_layer: 50
+    
+  # Dimension 6: Decoupled Adversarial Attacks (Comparison baseline)
+  adversarial:
+    fgsm:
+      epsilon: 0.03137            # 8/255
+    pgd:
+      epsilon: 0.03137            # 8/255
+      alpha: 0.00784              # 2/255
+      steps: 20
+      random_start: true

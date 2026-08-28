@@ -1,0 +1,76 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "14px",
+    "primaryTextColor": "#172033",
+    "lineColor": "#64748B"
+  },
+  "flowchart": {
+    "curve": "orthogonal",
+    "nodeSpacing": 45,
+    "rankSpacing": 60,
+    "padding": 18
+  }
+}}%%
+
+flowchart LR
+
+    subgraph INPUT["INPUT & MODEL"]
+        A["Dataset<br/><b>CIFAR-10</b>"]
+        B["DNN Model<br/><b>ResNet-18</b><br/><b>VGG-16</b>"]
+        A --> B
+    end
+
+    subgraph DISCOVERY["VULNERABILITY DISCOVERY"]
+        C["Fault Injection<br/><b>Stuck-at-Zero</b>"]
+        D["TD3 Agent<br/><b>Adaptive Search</b>"]
+        E["Fault Impact<br/>Measurement"]
+        C --> D
+        D --> E
+        E --> D
+    end
+
+    subgraph ANALYSIS["VULNERABILITY ANALYSIS"]
+        F["Channel Vulnerability<br/>Representation"]
+        G["Vulnerability<br/>Ranking"]
+        H["Cross-Layer<br/>Interaction Analysis"]
+        F --> G
+        G --> H
+    end
+
+    subgraph PROTECTION["ROBUSTNESS PROTECTION"]
+        I["Budget-Constrained<br/>Channel Selection"]
+        J["Fault-Aware<br/>Fine-Tuning"]
+        K["Protected<br/>DNN"]
+        I --> J
+        J --> K
+    end
+
+    subgraph EVALUATION["EVALUATION"]
+        L["Clean Accuracy"]
+        M["Fault Robustness"]
+        N["Search Efficiency"]
+        O["Protection Efficiency"]
+    end
+
+    B --> C
+    E --> F
+    G --> I
+    H --> I
+    K --> L
+    K --> M
+    G --> N
+    I --> O
+
+    classDef input fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A;
+    classDef discovery fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef analysis fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#14532D;
+    classDef protection fill:#FCE7F3,stroke:#DB2777,stroke-width:2px,color:#831843;
+    classDef evaluation fill:#F1F5F9,stroke:#475569,stroke-width:2px,color:#1E293B;
+
+    class A,B input;
+    class C,D,E discovery;
+    class F,G,H analysis;
+    class I,J,K protection;
+    class L,M,N,O evaluation;

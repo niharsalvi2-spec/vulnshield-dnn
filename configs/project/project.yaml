@@ -1,0 +1,26 @@
+# VulnShield-DNN Master Project Configuration
+project:
+  name: "VulnShield-DNN"
+  version: "0.1.0"
+  description: "TD3-Based Fault-Sensitive Channel Identification, Cross-Layer Interaction Analysis, and Budget-Aware Robustness Enhancement for Deep Neural Networks"
+  authors:
+    - "Ishwar Sonawane"
+    - "Adhya Bhagat"
+    - "Nihar Salvi"
+  institution: "PCCoE Pune"
+  domain: "Deep Learning Reliability & Trustworthy AI"
+
+framework:
+  target_architectures:
+    - "resnet18"
+    - "vgg16"
+  target_dataset: "cifar10"
+  primary_fault_model: "stuck_at_zero"
+  protection_budgets: [0.01, 0.03, 0.05, 0.10]
+  discovery_methods:
+    - "td3"
+    - "ddpg"
+    - "random"
+    - "activation"
+    - "gradient"
+    - "taylor"

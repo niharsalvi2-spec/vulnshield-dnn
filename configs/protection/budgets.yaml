@@ -1,0 +1,21 @@
+# VulnShield-DNN Protection Budgets Configuration
+budgets:
+  # Standard protection budget percentages (Top-K most vulnerable channels)
+  percentages: [0.01, 0.03, 0.05, 0.10]
+  
+  # Total convolutional channels per architecture
+  resnet18_total_channels: 4800
+  vgg16_total_channels: 4224
+  
+  # Explicit channel counts per budget
+  resnet18:
+    b_1pct: 48
+    b_3pct: 144
+    b_5pct: 240
+    b_10pct: 480
+    
+  vgg16:
+    b_1pct: 42
+    b_3pct: 127
+    b_5pct: 211
+    b_10pct: 422

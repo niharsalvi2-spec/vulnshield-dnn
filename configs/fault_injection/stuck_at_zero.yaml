@@ -1,0 +1,22 @@
+# VulnShield-DNN Fault Injection Configuration — Stuck-at-Zero
+fault_injection:
+  # Fault model
+  fault_type: "stuck_at_zero"          # Only mode used in this project
+  description: >
+    Stuck-at-zero fault model: all activations in the target output channel
+    of a convolutional layer are clamped to 0 via a forward hook, simulating
+    a permanent hardware fault (e.g., bit-flip in weight memory or neuron death).
+
+  # Hook application mode
+  hook_mode: "output"                  # Applied to Conv2d output feature maps
+  # Activation shape: (B, C, H, W) — channel dimension is dim=1
+
+  # Injection budget for RL discovery
+  injection_budget: 1                  # Default: single channel per forward pass
+  max_simultaneous_faults: 5           # Max channels faulted simultaneously
+
+  # Fault evaluation configuration
+  evaluation:
+    num_repetitions: 1                 # Fault is deterministic; no repetition needed
+    use_fixed_eval_subset: true        # Use the fixed 1000-sample eval_fault loader
+    batch_size: 128
