@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -e .
-          pip install pytest pytest-cov flake8
+          pip install pytest pytest-cov flake8 scipy
 
       - name: Verify Directory Governance & Integrity
         run: |
@@ -44,6 +44,29 @@ jobs:
           # Warning check for PEP8 conformance
           flake8 src/ tests/ --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
 
-      - name: Execute Full 12-Phase PyTest Suite
+      - name: Execute Full Scientific Test Suite with Coverage
         run: |
-          python -m pytest tests/ -v --tb=short
+          python -m pytest tests/ -v --tb=short --cov=src/vulnshield --cov-report=term-missing
+
+      - name: Validate Scientific Invariants
+        run: |
+          python -c "
+          from vulnshield.validation.result_validator import validate_discovery_result, ResultValidationError
+          result = {'top_channels': [{'delta_accuracy': 5.0, 'layer_name': 'l', 'channel_idx': 0}], 'total_queries_executed': 50, 'max_budget_enforced': 50}
+          validate_discovery_result(result, budget=50)
+          print('[PASS] Result validator: discovery schema OK')
+          "
+
+      - name: Verify No Hardcoded Empirical Constants (93.2, 76.4, 88.5)
+        run: |
+          python -c "
+          import subprocess, sys
+          result = subprocess.run(['grep', '-rn', '93\.2\|76\.4\|88\.5\|92\.8', 'src/vulnshield/', '--include=*.py'], capture_output=True, text=True)
+          hits = [l for l in result.stdout.splitlines() if 'test' not in l.lower()]
+          if hits:
+              print('[FAIL] Hardcoded empirical values detected in src/:')
+              print('\n'.join(hits))
+              sys.exit(1)
+          else:
+              print('[PASS] No hardcoded empirical constants in source code.')
+          "

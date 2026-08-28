@@ -1,0 +1,58 @@
+"""Debug (Fast Smoke-Test) Configuration for VulnShield-DNN.
+
+WARNING: THIS IS A DEBUG CONFIGURATION ONLY.
+DO NOT USE THESE SETTINGS FOR REPORTED RESEARCH RESULTS.
+
+Purpose: Fast end-to-end pipeline verification without GPU or full datasets.
+"""
+
+project:
+  name: "vulnshield-dnn-DEBUG"
+  seed: 42
+  mode: DEBUG
+
+dataset:
+  name: cifar10
+  n_train: 200       # DEBUG: 200 samples only (full=40000)
+  n_val: 50          # DEBUG: 50 samples (full=5000)
+  n_test: 50         # DEBUG: 50 samples (full=5000)
+  n_eval_fault: 32   # DEBUG: 32 samples (full=1000)
+  batch_size: 32
+
+models:
+  - name: resnet18
+  - name: vgg16
+
+training:
+  epochs: 2          # DEBUG: 2 epochs only (full=200)
+  optimizer: sgd
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 5e-4
+
+discovery:
+  query_budget: 6    # DEBUG: 6 queries only (full=50)
+  seeds:
+    - 42             # DEBUG: 1 seed only (full: 42, 123, 456, 789, 999)
+
+baselines:
+  - random
+  - activation
+  # gradient and ddpg skipped in DEBUG for speed
+
+interaction:
+  max_pairs: 4       # DEBUG: 4 pairs only (full=100+)
+
+protection:
+  budgets:
+    - 0.05           # DEBUG: 1 budget only (full: 0.01, 0.03, 0.05, 0.10)
+  epochs: 2          # DEBUG: 2 epochs only
+
+evaluation:
+  fgsm_epsilon: 0.03
+  pgd_steps: 5       # DEBUG: 5 PGD steps (full=20)
+  bit_flip_per_layer: 2  # DEBUG: 2 flips/layer (full=10)
+
+debug:
+  enabled: true
+  label: "DEBUG ONLY — NOT FOR RESEARCH RESULTS"
