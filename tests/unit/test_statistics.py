@@ -51,3 +51,24 @@ class TestStatisticalAnalysis:
         corr = compute_ranking_correlations(pred, gt)
         assert abs(corr["spearman_rho"] - 1.0) < 1e-5
         assert abs(corr["kendall_tau"] - 1.0) < 1e-5
+
+    def test_multi_seed_paired_significance_with_holm_bonferroni(self):
+        # 5 seeds comparison: TD3 vs 4 baselines
+        td3_seeds = [15.2, 16.4, 14.9, 17.1, 15.8]
+        random_seeds = [6.1, 7.2, 5.8, 8.0, 6.5]
+        activation_seeds = [9.0, 10.1, 8.8, 10.5, 9.4]
+        gradient_seeds = [11.2, 12.0, 11.5, 13.0, 12.1]
+        ddpg_seeds = [13.1, 14.0, 13.5, 14.8, 13.9]
+
+        p_vals = []
+        for bl in [random_seeds, activation_seeds, gradient_seeds, ddpg_seeds]:
+            res = compute_paired_significance(td3_seeds, bl)
+            assert "p_value_parametric" in res
+            assert "cohens_d" in res
+            assert res["cohens_d"] > 0  # TD3 is higher in all paired seeds
+            p_vals.append(res["p_value_parametric"])
+
+        rejected = holm_bonferroni_correction(p_vals, alpha=0.05)
+        assert len(rejected) == 4
+        # All comparisons have strong effect sizes and low p-values
+        assert all(rejected)

@@ -6,7 +6,7 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python)](https://www.python.org/downloads/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg?logo=pytorch)](https://pytorch.org/)
 [![CUDA 12.4+](https://img.shields.io/badge/CUDA-12.4%2B-76b900.svg?logo=nvidia)](https://developer.nvidia.com/cuda-toolkit)
-[![Test Suite: 132 Passed](https://img.shields.io/badge/pytest-132%20passed%20(100%25)-brightgreen.svg?logo=pytest)](file:///tests/)
+[![Test Suite: 152 Passed](https://img.shields.io/badge/pytest-152%20passed%20(100%25)-brightgreen.svg?logo=pytest)](file:///tests/)
 [![Architecture: ResNet18 & VGG16](https://img.shields.io/badge/Models-ResNet18%20%7C%20VGG16-orange.svg)](file:///src/vulnshield/models/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

@@ -76,6 +76,14 @@ def run_benchmark():
     from vulnshield.baselines.gradient_baseline import run_gradient_baseline
     from vulnshield.baselines.ddpg_baseline import DDPGAgent, DDPGConfig
 
+    if not args.debug:
+        if not args.checkpoint or not Path(args.checkpoint).exists():
+            raise FileNotFoundError(
+                f"[FATAL RESEARCH ERROR] Research mode requires a valid trained checkpoint. "
+                f"Provided checkpoint '{args.checkpoint}' does not exist. "
+                f"Train clean model first via scripts/models/train_{args.model}.py or pass --debug for smoke-testing."
+            )
+
     model = build_model(args.model)
     if args.checkpoint and Path(args.checkpoint).exists():
         ckpt = torch.load(args.checkpoint, map_location=device)
@@ -83,7 +91,7 @@ def run_benchmark():
         model.load_state_dict(state)
         print(f"[*] Loaded checkpoint: {args.checkpoint}")
     else:
-        print("[WARNING] No checkpoint provided — using randomly initialized model")
+        print("[DEBUG WARNING] Running with randomly initialized model strictly for smoke-testing.")
 
     model.eval().to(device)
 
@@ -103,19 +111,14 @@ def run_benchmark():
         json.dump({"clean_accuracy": clean_acc, "model": args.model}, f, indent=2)
 
     all_method_results = {}
+    per_seed_data = {}  # method_name -> {"top_delta": [...], "mean_delta": [...], "auc": [...]}
 
     # ─────────────────────────────────────────────────────────────────────────
     # Run each method across all seeds
     # ─────────────────────────────────────────────────────────────────────────
-    methods = {
-        "td3": None,
-        "random": None,
-        "activation": None,
-        "gradient": None,
-        "ddpg": None
-    }
+    methods = ["td3", "random", "activation", "gradient", "ddpg"]
 
-    for method_name in methods.keys():
+    for method_name in methods:
         seed_top_deltas = []
         seed_mean_deltas = []
         seed_aucs = []
@@ -158,7 +161,7 @@ def run_benchmark():
                     "top_channels": top_ch,
                     "total_queries_executed": len(raw),
                     "max_budget_enforced": budget,
-                    "episode_rewards": []
+                    "episode_rewards": [r.get("activation_score", 0.0) for r in raw]
                 }
                 result_file = baseline_dir / f"{args.model}_activation_baseline_seed{seed}.json"
 
@@ -170,7 +173,7 @@ def run_benchmark():
                     "top_channels": top_ch,
                     "total_queries_executed": len(raw),
                     "max_budget_enforced": budget,
-                    "episode_rewards": []
+                    "episode_rewards": [r.get("gradient_score", 0.0) for r in raw]
                 }
                 result_file = baseline_dir / f"{args.model}_gradient_baseline_seed{seed}.json"
 
@@ -206,6 +209,12 @@ def run_benchmark():
             manifest.save(result_file.parent / f"{result_file.stem}_manifest")
             print(f"  [PASS] Seed={seed}: top_Δ={top_d:.2f}% | mean_Δ={mean_d:.2f}% | AUC={auc:.2f}")
 
+        per_seed_data[method_name] = {
+            "top_delta": seed_top_deltas,
+            "mean_delta": seed_mean_deltas,
+            "auc": seed_aucs
+        }
+
         # Statistical aggregation across seeds
         if seed_top_deltas:
             stats = compute_distribution_statistics(seed_top_deltas)
@@ -214,39 +223,56 @@ def run_benchmark():
                 "mean_delta": compute_distribution_statistics(seed_mean_deltas).to_dict(),
                 "auc": compute_distribution_statistics(seed_aucs).to_dict(),
                 "budget": budget,
-                "seeds": seeds
+                "seeds": seeds,
+                "raw_seed_observations": {
+                    "top_delta": seed_top_deltas,
+                    "mean_delta": seed_mean_deltas,
+                    "auc": seed_aucs
+                }
             }
             print(f"\n[✓] {method_name.upper()} Summary: "
                   f"top_Δ={stats.mean:.2f}±{stats.std:.2f}% "
                   f"[95% CI: {stats.ci_lower:.2f}–{stats.ci_upper:.2f}%]")
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Statistical pairwise significance (TD3 vs each baseline)
+    # Genuine Paired Statistical Significance (TD3 vs each baseline)
     # ─────────────────────────────────────────────────────────────────────────
     print("\n" + "=" * 65)
-    print("Statistical Significance: TD3 vs Baselines")
+    print("Statistical Significance: TD3 vs Baselines (Paired Multi-Seed Analysis)")
     print("=" * 65)
 
     p_values = []
-    baselines_list = ["random", "activation", "gradient", "ddpg"]
+    comparison_names = []
     sig_results = {}
 
-    td3_seed_deltas = [
-        all_method_results.get("td3", {}).get("top_delta", {}).get("mean", 0.0)
-    ] * len(seeds)  # Placeholder if seeds weren't individually tracked
+    td3_deltas = per_seed_data.get("td3", {}).get("top_delta", [])
 
-    for bl in baselines_list:
-        if bl in all_method_results and "td3" in all_method_results:
-            td3_m = all_method_results["td3"]["top_delta"]["mean"]
-            bl_m = all_method_results[bl]["top_delta"]["mean"]
-            pv = 1.0  # Cannot compute without per-seed arrays at this level
-            p_values.append(pv)
-            sig_results[bl] = {"p_value": pv, "td3_mean": td3_m, "baseline_mean": bl_m}
+    if len(td3_deltas) >= 2:
+        for bl in ["random", "activation", "gradient", "ddpg"]:
+            bl_deltas = per_seed_data.get(bl, {}).get("top_delta", [])
+            if len(bl_deltas) == len(td3_deltas) and len(td3_deltas) >= 2:
+                paired_res = compute_paired_significance(td3_deltas, bl_deltas)
+                p_val = paired_res["p_value_parametric"]
+                p_values.append(p_val)
+                comparison_names.append(bl)
+                sig_results[bl] = {
+                    "t_statistic": paired_res["t_statistic"],
+                    "p_value_parametric": paired_res["p_value_parametric"],
+                    "wilcoxon_stat": paired_res["wilcoxon_stat"],
+                    "p_value_nonparametric": paired_res["p_value_nonparametric"],
+                    "cohens_d": paired_res["cohens_d"],
+                    "is_significant_p05": paired_res["is_significant_p05"],
+                    "td3_seed_values": td3_deltas,
+                    "baseline_seed_values": bl_deltas
+                }
+                print(f"  TD3 vs {bl.upper():10s} | t={paired_res['t_statistic']:6.3f} | p={p_val:7.4f} | d={paired_res['cohens_d']:6.3f} | Sig(p<0.05): {paired_res['is_significant_p05']}")
 
-    rejected = holm_bonferroni_correction(p_values) if p_values else []
-    for i, bl in enumerate(baselines_list):
-        if bl in sig_results:
-            sig_results[bl]["holm_bonferroni_rejected"] = rejected[i] if i < len(rejected) else False
+        if p_values:
+            rejected = holm_bonferroni_correction(p_values, alpha=0.05)
+            for i, bl in enumerate(comparison_names):
+                sig_results[bl]["holm_bonferroni_rejected"] = rejected[i]
+    else:
+        print("[INFO] Minimum 2 independent seeds required for statistical significance testing.")
 
     # Save aggregated multi-seed results
     agg_file = output_dir / f"{args.model}_discovery_aggregated.json"
@@ -256,7 +282,7 @@ def run_benchmark():
             "budget": budget,
             "seeds": seeds,
             "methods": all_method_results,
-            "significance": sig_results,
+            "pairwise_significance_td3_vs_baselines": sig_results,
             "debug": args.debug
         }, f, indent=2)
 

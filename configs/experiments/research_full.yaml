@@ -1,19 +1,18 @@
-"""Publication-Grade Full Research Configuration for VulnShield-DNN.
-
-THIS IS THE OFFICIAL RESEARCH CONFIGURATION.
-All reported results in publications must originate from this configuration.
-
-Experiment settings are FROZEN as of this commit.
-Any deviation must be documented and version-controlled.
-"""
+# Publication-Grade Full Research Configuration for VulnShield-DNN.
+#
+# THIS IS THE OFFICIAL RESEARCH CONFIGURATION.
+# All reported results in publications must originate from this configuration.
+#
+# Experiment settings are FROZEN as of this commit.
+# Any deviation must be documented and version-controlled.
 
 project:
   name: "vulnshield-dnn"
   seed: 42
-  mode: RESEARCH
+  mode: "RESEARCH"
 
 dataset:
-  name: cifar10
+  name: "cifar10"
   n_train: 40000     # Official CIFAR-10 train split
   n_val: 5000        # Validation split (disjoint from test)
   n_test: 5000       # Test split (reserved for final evaluation only)
@@ -21,18 +20,18 @@ dataset:
   batch_size: 128
 
 models:
-  - name: resnet18
-    config: configs/models/resnet18_cifar10.yaml
-  - name: vgg16
-    config: configs/models/vgg16_cifar10.yaml
+  - name: "resnet18"
+    config: "configs/models/resnet18_cifar10.yaml"
+  - name: "vgg16"
+    config: "configs/models/vgg16_cifar10.yaml"
 
 training:
   epochs: 200
-  optimizer: sgd
+  optimizer: "sgd"
   lr: 0.1
   momentum: 0.9
-  weight_decay: 5e-4
-  scheduler: cosine
+  weight_decay: 0.0005
+  scheduler: "cosine"
 
 discovery:
   # N_queries = 50 for ALL methods — strictly enforced
@@ -45,10 +44,10 @@ discovery:
     - 999
 
 baselines:
-  - random
-  - activation
-  - gradient
-  - ddpg
+  - "random"
+  - "activation"
+  - "gradient"
+  - "ddpg"
 
 interaction:
   max_pairs: 200
@@ -71,16 +70,16 @@ evaluation:
   pgd_steps: 20
   bit_flip_per_layer: 10
   bit_types:
-    - sign
-    - exponent
-    - mantissa
+    - "sign"
+    - "exponent"
+    - "mantissa"
 
 statistical:
   confidence_level: 0.95
-  multiple_comparison: holm_bonferroni
+  multiple_comparison: "holm_bonferroni"
   min_seeds_for_significance: 3
 
 research:
-  mode: RESEARCH
+  mode: "RESEARCH"
   label: "OFFICIAL RESEARCH CONFIGURATION — Results are publication-grade"
   frozen_at: "2026-08-28"
